@@ -16,7 +16,7 @@
 
 int main(int argc, char *argv[]) {
 
-    // Handle incorrect arguments
+    // Handle incorrect # of arguments
     if (argc != 2) {
         fprintf(stderr, "How long does the key need to be\n", argv[0]);
         fprintf(stderr, "Example: %s 1024\n", argv[0]);
