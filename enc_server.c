@@ -23,6 +23,38 @@ void error(const char *msg) {
 
 }
 
+void encrypt(char *text, char *key, char *encryptedText) {
+
+    int i;
+    int textChar;
+    int keyChar;
+    int newChar;
+
+    for(i=0; i < strlen(text); i++) {
+
+        if(text[i] == ' ') {
+            textChar = 26;
+        } else {
+            textChar = text[i] - 'A';
+        }
+
+        if(key[i] == ' ') {
+            keyChar = 26;
+        } else {
+            keyChar = key[i] - 'A';
+        }
+    
+        newChar = (textChar + keyChar) % 27;
+
+        if(newChar == 26) {
+            encryptedText[i] = ' ';
+        } else {
+            encryptedText[i] = newChar + 'A';
+        }
+    }
+
+}
+
 // Set up the address struct for the server socket
 void setupAddressStruct(struct sockaddr_in* address, 
                         int portNumber){
@@ -40,7 +72,10 @@ void setupAddressStruct(struct sockaddr_in* address,
 
 int main(int argc, char *argv[]) {
     int connectionSocket, charsRead;
-    char buffer[256];
+    char buffer[1024];
+    char text[10000];
+    char key[10000];
+    char encryptedText[10000];
     struct sockaddr_in serverAddress, clientAddress;
     socklen_t sizeOfClientInfo = sizeof(clientAddress); 
     
@@ -84,20 +119,39 @@ int main(int argc, char *argv[]) {
                             ntohs(clientAddress.sin_port));
 
     // Get the message from the client and display it
-    memset(buffer, '\0', 256);
+    memset(buffer, '\0', 1024);
     // Read the client's message from the socket
-    charsRead = recv(connectionSocket, buffer, 255, 0); 
+    printf("%c\n",buffer[strlen(buffer)-1]);
+    memset(buffer, '\0', 1024);
+
+    // Get Text
+    while(charsRead = recv(connectionSocket, buffer, 1, 0)) {
+        if(buffer[0] == '\n') {
+            break;
+        }
+        strcat(text, buffer);
+    }
+    
+    // Get Key
+    while(charsRead = recv(connectionSocket, buffer, 1, 0)) {
+        if(buffer[0] == '@') {
+            break;
+        }
+        strcat(key, buffer);
+    }
     if (charsRead < 0){
         error("ERROR reading from socket");
     }
-    printf("SERVER: I received this from the client: \"%s\"\n", buffer);
-
+    encrypt(text, key, encryptedText);
+    printf("SERVER: I received this from the client: \"%s\"\n", text);
+    printf("SERVER: I received this from the client: \"%s\"\n", encryptedText);
     // Send a Success message back to the client
     charsRead = send(connectionSocket, 
                     "I am the server, and I got your message", 39, 0); 
     if (charsRead < 0){
         error("ERROR writing to socket");
     }
+
     // Close the connection socket for this client
     close(connectionSocket); 
     }
