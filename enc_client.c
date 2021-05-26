@@ -23,38 +23,6 @@ void error(const char *msg) {
 
 }
 
-int getFileLength(FILE *file, char *buffer) {
-
-    int count;
-    char ch;
-
-    // https://www.codevscolor.com/c-program-read-file-contents-character
-    for (ch = getc(file); ch != EOF; ch = getc(file)) {
-
-        buffer[count] = ch;
-        // Increment count for this character
-        count = count + 1;
-
-    }
-
-    return count;
-}
-
-// void fillBuffer(FILE *file, char* buffer) {
-
-//     int count;
-//     char ch;
-
-//     // https://www.codevscolor.com/c-program-read-file-contents-character
-//     for (ch = getc(file); ch != EOF; ch = getc(file)) {
-        
-//         buffer[count] = ch;
-//         count++;
-
-//     }
-
-// }
-
 // Set up the address struct
 void setupAddressStruct(struct sockaddr_in* address, int portNumber){
 
@@ -82,7 +50,7 @@ void setupAddressStruct(struct sockaddr_in* address, int portNumber){
 int main(int argc, char *argv[]) {
 
     // Initial Setup
-    int socketFD, portNumber, charsWritten, charsRead, fileLength;
+    int socketFD, portNumber, charsWritten, charsRead, fileLength, keyLength;
     struct sockaddr_in serverAddress;
     FILE *plainText;
     FILE *key;   // was key
@@ -115,7 +83,6 @@ int main(int argc, char *argv[]) {
 
     }
     
-    /**********************text******************************/
     //Send text to server
     plainText = fopen(argv[1], "r");
     if (plainText == NULL) {
@@ -137,13 +104,21 @@ int main(int argc, char *argv[]) {
         strcat(sendText, buffer);
     }
     
+    fileLength = strlen(buffer);
     memset(buffer, '\0', sizeof(buffer));
 
     while(fgets(buffer, size, key) != NULL) {
         buffer[strcspn(buffer, "\n")] = '\0';
         strcat(sendText, buffer);
     }
-    printf("%s", sendText);
+    keyLength = strlen(buffer);
+
+    if(fileLength > keyLength) {
+
+        error("CLIENT: Key is too short");
+
+    }
+
     strcat(sendText, "@");
     
     //Send message to server
@@ -161,54 +136,20 @@ int main(int argc, char *argv[]) {
     }
     fclose(plainText);
     fclose(key);
-    /**********************text*********************************/
-
-    /**********************key**********************************/
-
-    // // Send key to server
-    // key = fopen(argv[2], "r");
-    // if (key == NULL) {
-
-    //     error("CLIENT: Couldn't find plain text file");
-
-    // }
-
-    // memset(buffer, '\0', sizeof(buffer));
-    // fileLength = getFileLength(key, buffer);
-    // printf("%d\n", fileLength);                     //Here for Testing REMOVE!!!!!
-    // buffer[strcspn(buffer, "\n")] = '\0'; 
-    // printf("%s", buffer);                           //Here for Testing REMOVE!!!!!
-
-    // //printf("hello\n");
-    // //Send message to server
-    // // Write to the server
-    // charsWritten = send(socketFD, buffer, strlen(buffer), 0); 
-    // if (charsWritten < 0){
-
-    //     error("CLIENT: ERROR writing to socket");
-
-    // }
-    // if (charsWritten < strlen(buffer)){
-
-    //     printf("CLIENT: WARNING: Not all data written to socket!\n");
-
-    // }
-    // fclose(plainText);
-
-    /**********************key**********************************/
 
     // Get return message from server
     // Clear out the buffer again for reuse
-    //memset(buffer, '\0', sizeof(buffer));
+    memset(buffer, '\0', sizeof(buffer));
     // Read data from the socket, leaving \0 at end
-    // charsRead = recv(socketFD, buffer, sizeof(buffer) - 1, 0); 
-    // if (charsRead < 0){
+    charsRead = recv(socketFD, buffer, sizeof(buffer) - 1, 0); 
+    if (charsRead < 0){
 
-    //     error("CLIENT: ERROR reading from socket");
+        error("CLIENT: ERROR reading from socket");
 
-    // }
+    }
 
-    // printf("CLIENT: I received this from the server: \"%s\"\n", buffer);
+    printf("%s", buffer);
+    fflush(stdout);
 
     // Close the socket
     close(socketFD); 
