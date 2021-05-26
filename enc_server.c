@@ -12,6 +12,7 @@
 #include <string.h>
 #include <sys/types.h>  // ssize_t
 #include <sys/socket.h> // send(),recv()
+#include <sys/wait.h>   // waitpid()
 #include <netdb.h>      // gethostbyname()
 
 // Error function used for reporting issues
@@ -71,11 +72,9 @@ void setupAddressStruct(struct sockaddr_in* address,
 }
 
 int main(int argc, char *argv[]) {
-    int connectionSocket, charsRead;
-    char buffer[1024];
-    char text[10000];
-    char key[10000];
-    char encryptedText[10000];
+
+    pid_t spawnpid = -5;
+    int connectionSocket, charsRead, childStatus;
     struct sockaddr_in serverAddress, clientAddress;
     socklen_t sizeOfClientInfo = sizeof(clientAddress); 
     
@@ -106,55 +105,77 @@ int main(int argc, char *argv[]) {
 
       // Accept a connection, blocking if one is not available until one connects
     while(1){
-    // Accept the connection request which creates a connection socket
-    connectionSocket = accept(listenSocket, 
-                (struct sockaddr *)&clientAddress, 
-                &sizeOfClientInfo); 
-    if (connectionSocket < 0){
-        error("ERROR on accept");
-    }
 
-    printf("SERVER: Connected to client running at host %d port %d\n", 
-                            ntohs(clientAddress.sin_addr.s_addr),
-                            ntohs(clientAddress.sin_port));
-
-    // Get the message from the client and display it
-    memset(buffer, '\0', 1024);
-    // Read the client's message from the socket
-    printf("%c\n",buffer[strlen(buffer)-1]);
-    memset(buffer, '\0', 1024);
-
-    // Get Text
-    while(charsRead = recv(connectionSocket, buffer, 1, 0)) {
-        if(buffer[0] == '\n') {
-            break;
+        // Accept the connection request which creates a connection socket
+        connectionSocket = accept(listenSocket, 
+                    (struct sockaddr *)&clientAddress, 
+                    &sizeOfClientInfo); 
+        if (connectionSocket < 0){
+            error("ERROR on accept");
         }
-        strcat(text, buffer);
-    }
-    
-    // Get Key
-    while(charsRead = recv(connectionSocket, buffer, 1, 0)) {
-        if(buffer[0] == '@') {
-            break;
+
+        spawnpid = fork();
+        switch(spawnpid) {
+            case -1: {
+
+                error("SERVER: fork() failed");
+                exit(1);
+                break;
+            }
+            
+            case 0: {
+
+                char buffer[1024];
+                char text[100000];
+                char key[100000];
+                char encryptedText[100000];
+
+                // Get the message from the client and display it
+                memset(buffer, '\0', 1024);
+                // Read the client's message from the socket
+                printf("%c\n",buffer[strlen(buffer)-1]);
+                memset(buffer, '\0', 1024);
+
+                // Get Text
+                while(charsRead = recv(connectionSocket, buffer, 1, 0)) {
+                    if(buffer[0] == '\n') {
+                        break;
+                    }
+                    strcat(text, buffer);
+                }
+                
+                // Get Key
+                while(charsRead = recv(connectionSocket, buffer, 1, 0)) {
+                    if(buffer[0] == '@') {
+                        break;
+                    }
+                    strcat(key, buffer);
+                }
+                if (charsRead < 0){
+                    error("ERROR reading from socket");
+                }
+                encrypt(text, key, encryptedText);
+                //printf("SERVER: I received this from the client: \"%s\"\n", text);
+                printf("SERVER: I received this from the client: \"%s\"\n", encryptedText);
+                fflush(stdout);
+                // Send a Success message back to the client
+                charsRead = send(connectionSocket, encryptedText, strlen(encryptedText), 0); 
+                if (charsRead < 0){
+                    error("ERROR writing to socket");
+                }
+
+                // Close the connection socket for this client
+                close(connectionSocket);
+                break;
+
+            }
+            default: {
+
+                spawnpid = waitpid(spawnpid, &childStatus, WNOHANG);
+            }
         }
-        strcat(key, buffer);
-    }
-    if (charsRead < 0){
-        error("ERROR reading from socket");
-    }
-    encrypt(text, key, encryptedText);
-    printf("SERVER: I received this from the client: \"%s\"\n", text);
-    printf("SERVER: I received this from the client: \"%s\"\n", encryptedText);
-    // Send a Success message back to the client
-    charsRead = send(connectionSocket, 
-                    "I am the server, and I got your message", 39, 0); 
-    if (charsRead < 0){
-        error("ERROR writing to socket");
     }
 
-    // Close the connection socket for this client
-    close(connectionSocket); 
-    }
     // Close the listening socket
     close(listenSocket); 
     return 0;
