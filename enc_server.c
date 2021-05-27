@@ -53,6 +53,7 @@ void encrypt(char *text, char *key, char *encryptedText) {
             encryptedText[i] = newChar + 'A';
         }
     }
+    encryptedText[i] = '\n';
 
 }
 
@@ -126,40 +127,45 @@ int main(int argc, char *argv[]) {
             case 0: {
 
                 char buffer[1024];
-                char text[100000];
-                char key[100000];
+                char fullText[100000];
+                char parsedKey[100000];
+                char parsedText[100000];
                 char encryptedText[100000];
+                char *key;
+                char *text;
+                char keyFlag = 0;
+                int fileLength, charsRead;
 
                 // Get the message from the client and display it
                 memset(buffer, '\0', 1024);
-                // Read the client's message from the socket
-                printf("%c\n",buffer[strlen(buffer)-1]);
-                memset(buffer, '\0', 1024);
 
-                // Get Text
-                while(charsRead = recv(connectionSocket, buffer, 1, 0)) {
-                    if(buffer[0] == '\n') {
-                        break;
-                    }
-                    strcat(text, buffer);
-                }
-                
-                // Get Key
-                while(charsRead = recv(connectionSocket, buffer, 1, 0)) {
-                    if(buffer[0] == '@') {
-                        break;
-                    }
-                    strcat(key, buffer);
+                //Read number of chars
+                read(connectionSocket, &fileLength, sizeof(int));
+            
+                charsRead = 0;
+                while(charsRead <= fileLength) {
+
+                    charsRead += recv(connectionSocket, buffer, 255, 0);
+                    strcat(fullText, buffer);
+                    memset(buffer, '\0', 1024);
+
                 }
                 if (charsRead < 0){
                     error("ERROR reading from socket");
                 }
-                encrypt(text, key, encryptedText);
-                //printf("SERVER: I received this from the client: \"%s\"\n", text);
-                printf("SERVER: I received this from the client: \"%s\"\n", encryptedText);
-                fflush(stdout);
-                // Send a Success message back to the client
-                charsRead = send(connectionSocket, encryptedText, strlen(encryptedText), 0); 
+
+                text = strtok(fullText, "@");
+                strcpy(parsedText, text);
+                key = strtok(NULL, "@");
+                strcpy(parsedKey, key);
+
+                encrypt(parsedText, parsedKey, encryptedText);
+
+                // Send encrypted text back to client
+                charsRead = 0;
+                while(charsRead < strlen(encryptedText)) {
+                    charsRead += send(connectionSocket, encryptedText, 1000, 0);
+                }
                 if (charsRead < 0){
                     error("ERROR writing to socket");
                 }

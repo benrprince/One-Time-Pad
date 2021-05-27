@@ -57,6 +57,8 @@ int main(int argc, char *argv[]) {
     char buffer[256];   // change to 1024
     int size = 256;
     char sendText[100000];
+    char keyText[100000];
+    char readText[100000];
 
     // Check usage & args
     if (argc < 4) { 
@@ -100,55 +102,76 @@ int main(int argc, char *argv[]) {
 
     memset(buffer, '\0', sizeof(buffer));
 
-    while(fgets(buffer, size, plainText) != NULL) {
-        strcat(sendText, buffer);
-    }
-    
-    fileLength = strlen(buffer);
-    memset(buffer, '\0', sizeof(buffer));
+    char c;
+    fileLength = 0;
+    for(c = getc(plainText); c != EOF; c = getc(plainText)) {
 
-    while(fgets(buffer, size, key) != NULL) {
-        buffer[strcspn(buffer, "\n")] = '\0';
-        strcat(sendText, buffer);
-    }
-    keyLength = strlen(buffer);
-
-    if(fileLength > keyLength) {
-
-        error("CLIENT: Key is too short");
+        sendText[fileLength] = c;
+        fileLength++;
 
     }
+    sendText[strcspn(sendText, "\n")] = '\0';
+    sendText[strcspn(sendText, "\n")] = '@';
 
-    strcat(sendText, "@");
-    
-    //Send message to server
-    //Write to the server
-    charsWritten = send(socketFD, sendText, strlen(sendText), 0); 
-    if (charsWritten < 0){
+    keyLength = 0;
+    int tempLength = fileLength;
+    while((c = getc(key)) != EOF) {
+        
+        sendText[fileLength] = c;
+        fileLength++;
+        keyLength++;
 
-        error("CLIENT: ERROR writing to socket");
+        if(keyLength > tempLength) {
+            break;
+        }
 
     }
-    if (charsWritten < strlen(sendText)){
-
-        printf("CLIENT: WARNING: Not all data written to socket!\n");
+    if(keyLength < (fileLength - keyLength)) {
+        
+        error("CLIENT Error: Key is too short");
 
     }
+
+    sendText[strcspn(sendText, "\n")] = '\0';
+    keyLength--;
+
+    write(socketFD, &fileLength, sizeof(int));
+    rewind(plainText);
+    rewind(key);
+
+    char ch;
+    charsWritten = 0;
+    while(charsWritten <= fileLength) {  // Possibly change this
+
+        charsWritten += write(socketFD, sendText, 1000);
+
+    } 
+
     fclose(plainText);
     fclose(key);
 
     // Get return message from server
     // Clear out the buffer again for reuse
     memset(buffer, '\0', sizeof(buffer));
+
     // Read data from the socket, leaving \0 at end
-    charsRead = recv(socketFD, buffer, sizeof(buffer) - 1, 0); 
+    charsRead = 0;
+    while(charsRead < fileLength) {
+
+        charsRead += recv(socketFD, buffer, 10, 0);
+        strcat(readText, buffer);
+        memset(buffer, '\0', sizeof(buffer));
+
+    }
+    
     if (charsRead < 0){
 
         error("CLIENT: ERROR reading from socket");
 
     }
 
-    printf("%s", buffer);
+    // Send encrypted text to stdout
+    printf("%s", readText);
     fflush(stdout);
 
     // Close the socket
