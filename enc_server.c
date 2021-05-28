@@ -4,6 +4,7 @@
  *      Date: 05/31/2021
  * 
  *      Encryption Server File
+ *      Source: https://www.youtube.com/watch?v=9g_nMNJhRVk&list=PLPyaR5G9aNDvs6TtdpLcVO43_jvxp4emI&index=8
  * ******************************************************************/
 
 #include <stdio.h>
@@ -18,6 +19,11 @@
 // Error function used for reporting issues
 // Design copied from server.c example file on assignment page
 void error(const char *msg) {
+/******************************************************************
+ *  param: char * 
+ *  return: NA
+ *  description: Prints error message and exits
+ * ***************************************************************/
 
     perror(msg);
     exit(0);
@@ -33,28 +39,32 @@ void encrypt(char *text, char *key, char *encryptedText) {
 
     for(i=0; i < strlen(text); i++) {
 
+        // Convert text chars to int
         if(text[i] == ' ') {
             textChar = 26;
         } else {
             textChar = text[i] - 'A';
         }
 
+        // Convert key chars to int
         if(key[i] == ' ') {
             keyChar = 26;
         } else {
             keyChar = key[i] - 'A';
         }
-    
+
+        // Get encrypted character int
         newChar = (textChar + keyChar) % 27;
 
+        // Convert encrypted character int to a char value
         if(newChar == 26) {
             encryptedText[i] = ' ';
         } else {
             encryptedText[i] = newChar + 'A';
         }
     }
+    // Add new line char at the end
     encryptedText[i] = '\n';
-
 }
 
 // Set up the address struct for the server socket
@@ -74,6 +84,7 @@ void setupAddressStruct(struct sockaddr_in* address,
 
 int main(int argc, char *argv[]) {
 
+    // Set up varibales for socket and fork
     pid_t spawnpid = -5;
     int connectionSocket, charsRead, childStatus;
     struct sockaddr_in serverAddress, clientAddress;
@@ -133,15 +144,12 @@ int main(int argc, char *argv[]) {
                 char encryptedText[100000];
                 char *key;
                 char *text;
-                char keyFlag = 0;
                 int fileLength, charsRead;
 
-                // Get the message from the client and display it
-                memset(buffer, '\0', 1024);
-
-                //Read number of chars
+                //Read number of chars to expect
                 read(connectionSocket, &fileLength, sizeof(int));
             
+                // Read chars and set them in fullText
                 charsRead = 0;
                 while(charsRead <= fileLength) {
 
@@ -154,11 +162,13 @@ int main(int argc, char *argv[]) {
                     error("ERROR reading from socket");
                 }
 
+                // text and key are separated by a @ char. strtok to split them.
                 text = strtok(fullText, "@");
                 strcpy(parsedText, text);
                 key = strtok(NULL, "@");
                 strcpy(parsedKey, key);
 
+                // Call encrypt to put the encrypted text in encryptedText string
                 encrypt(parsedText, parsedKey, encryptedText);
 
                 // Send encrypted text back to client

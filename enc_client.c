@@ -4,6 +4,7 @@
  *      Date: 05/31/2021
  * 
  *      Encryption Client File
+ *      Source: https://www.youtube.com/watch?v=9g_nMNJhRVk&list=PLPyaR5G9aNDvs6TtdpLcVO43_jvxp4emI&index=8
  * ******************************************************************/
 
 #include <stdio.h>
@@ -17,6 +18,11 @@
 // Error function used for reporting issues
 // Design copied from client.c example file on assignment page
 void error(const char *msg) {
+/******************************************************************
+ *  param: char * 
+ *  return: NA
+ *  description: Prints error message and exits
+ * ***************************************************************/
 
     perror(msg);
     exit(0);
