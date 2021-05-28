@@ -14,6 +14,7 @@
 #include <sys/types.h>  // ssize_t
 #include <sys/socket.h> // send(),recv()
 #include <netdb.h>      // gethostbyname()
+#include <errno.h>
 
 // Error function used for reporting issues
 // Design copied from client.c example file on assignment page
@@ -23,7 +24,7 @@ void error(const char *msg) {
 *  return: NA
 *  description: Prints error message and exits
 * ***************************************************************/
-
+    errno = EBADE;   // Tried to find Generic Wording for the error, "Invalid Exchange"
     perror(msg);
     exit(0);
 
@@ -56,7 +57,7 @@ void setupAddressStruct(struct sockaddr_in* address, int portNumber){
 int main(int argc, char *argv[]) {
 
     // Initial Setup
-    int socketFD, portNumber, charsWritten, charsRead, fileLength, keyLength;
+    int socketFD, portNumber, charsWritten, charsRead, fileLength, keyLength, server;
     struct sockaddr_in serverAddress;
     FILE *plainText;
     FILE *key;   // was key
@@ -159,6 +160,15 @@ int main(int argc, char *argv[]) {
     // Get return message from server
     // Clear out the buffer again for reuse
     memset(buffer, '\0', sizeof(buffer));
+
+    // Check that we sent to correct server
+    read(socketFD, &server, sizeof(int));
+
+    if(server != 1) {
+
+        error("CLIENT Error: Sent to incorrect Server");
+
+    }
 
     // Read data from the socket, leaving \0 at end
     charsRead = 0;

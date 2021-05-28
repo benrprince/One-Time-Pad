@@ -14,6 +14,7 @@
 #include <sys/types.h>  // ssize_t
 #include <sys/socket.h> // send(),recv()
 #include <netdb.h>      // gethostbyname()
+#include <errno.h>
 
 // Error function used for reporting issues
 // Design copied from client.c example file on assignment page
@@ -23,10 +24,27 @@ void error(const char *msg) {
  *  return: NA
  *  description: Prints error message and exits
  * ***************************************************************/
-
+    errno = EBADE;   // Tried to find Generic Wording for the error, "Invalid Exchange"
     perror(msg);
     exit(0);
 
+}
+
+void checkBadChars(char *text, int fileLength) {
+/******************************************************************
+ *  param: char *, int
+ *  return: NA
+ *  description: Checks for bad characters. Chars outside of A-Z and space.
+ * ***************************************************************/
+
+    for(int i=0; i < fileLength-1; i++) {
+
+        if(((text[i] < 65) && text[i] != 32) || (text[i] > 90)) {
+
+            error("CLIENT Error: Bad Characters Present (!= A-Z & space)");
+
+        }
+    }
 }
 
 // Set up the address struct
@@ -56,12 +74,11 @@ void setupAddressStruct(struct sockaddr_in* address, int portNumber){
 int main(int argc, char *argv[]) {
 
     // Initial Setup
-    int socketFD, portNumber, charsWritten, charsRead, fileLength, keyLength;
+    int socketFD, portNumber, charsWritten, charsRead, fileLength, keyLength, server;
     struct sockaddr_in serverAddress;
     FILE *plainText;
-    FILE *key;   // was key
-    char buffer[256];   // change to 1024
-    int size = 256;
+    FILE *key;
+    char buffer[1024];   // change to 1024
     char sendText[100000];
     char keyText[100000];
     char readText[100000];
@@ -106,8 +123,6 @@ int main(int argc, char *argv[]) {
 
     }
 
-    memset(buffer, '\0', sizeof(buffer));
-
     char c;
     fileLength = 0;
     for(c = getc(plainText); c != EOF; c = getc(plainText)) {
@@ -116,6 +131,8 @@ int main(int argc, char *argv[]) {
         fileLength++;
 
     }
+
+    checkBadChars(sendText, fileLength);
     sendText[strcspn(sendText, "\n")] = '\0';
     sendText[strcspn(sendText, "\n")] = '@';
 
@@ -149,7 +166,7 @@ int main(int argc, char *argv[]) {
     charsWritten = 0;
     while(charsWritten <= fileLength) {  // Possibly change this
 
-        charsWritten += write(socketFD, sendText, 1000);
+        charsWritten += write(socketFD, sendText, 1000);    // buffer instead of sendText, test and change
 
     } 
 
@@ -157,8 +174,17 @@ int main(int argc, char *argv[]) {
     fclose(key);
 
     // Get return message from server
-    // Clear out the buffer again for reuse
+    // Clear out the buffer
     memset(buffer, '\0', sizeof(buffer));
+
+    // Check that we sent to correct server
+    read(socketFD, &server, sizeof(int));
+
+    if(server != 0) {
+
+        error("CLIENT Error: Sent to incorrect Server");
+
+    }
 
     // Read data from the socket, leaving \0 at end
     charsRead = 0;

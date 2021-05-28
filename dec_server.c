@@ -15,6 +15,7 @@
 #include <sys/socket.h> // send(),recv()
 #include <sys/wait.h>   // waitpid()
 #include <netdb.h>      // gethostbyname()
+#include <errno.h>
 
 // Error function used for reporting issues
 // Design copied from server.c example file on assignment page
@@ -24,6 +25,7 @@ void error(const char *msg) {
  *  return: NA
  *  description: Prints error message and exits
  * ***************************************************************/
+    errno = EBADE;   // Tried to find Generic Wording for the error, "Invalid Exchange"
     perror(msg);
     exit(0);
 
@@ -86,7 +88,7 @@ void setupAddressStruct(struct sockaddr_in* address,
 int main(int argc, char *argv[]) {
 
     pid_t spawnpid = -5;
-    int connectionSocket, charsRead, childStatus;
+    int connectionSocket, childStatus;
     struct sockaddr_in serverAddress, clientAddress;
     socklen_t sizeOfClientInfo = sizeof(clientAddress); 
     
@@ -144,7 +146,7 @@ int main(int argc, char *argv[]) {
                 char decryptedText[100000];
                 char *key;
                 char *text;
-                int fileLength, charsRead;
+                int fileLength, charsRead, fromDecryptionServer;
 
                 //Read number of chars to expect
                 read(connectionSocket, &fileLength, sizeof(int));
@@ -171,6 +173,10 @@ int main(int argc, char *argv[]) {
                 // Call decrypt to put the decrypted text in decryptedText string
                 decrypt(parsedText, parsedKey, decryptedText);
 
+                // Send a 1 to client to prove that this is encryption not decryption
+                fromDecryptionServer = 1;
+                write(connectionSocket, &fromDecryptionServer, sizeof(int));
+
                 // Send decrypted text back to client
                 charsRead = 0;
                 while(charsRead < strlen(decryptedText)) {
@@ -179,6 +185,12 @@ int main(int argc, char *argv[]) {
                 if (charsRead < 0){
                     error("ERROR writing to socket");
                 }
+
+                memset(buffer, '\0', 1024);
+                memset(fullText, '\0', 100000);
+                memset(parsedKey, '\0', 100000);
+                memset(parsedText, '\0', 100000);
+                memset(decryptedText, '\0', 100000);
 
                 // Close the connection socket for this client
                 close(connectionSocket);

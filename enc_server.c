@@ -15,6 +15,7 @@
 #include <sys/socket.h> // send(),recv()
 #include <sys/wait.h>   // waitpid()
 #include <netdb.h>      // gethostbyname()
+#include <errno.h>
 
 // Error function used for reporting issues
 // Design copied from server.c example file on assignment page
@@ -24,7 +25,7 @@ void error(const char *msg) {
  *  return: NA
  *  description: Prints error message and exits
  * ***************************************************************/
-
+    errno = EBADE;   // Tried to find Generic Wording for the error, "Invalid Exchange"
     perror(msg);
     exit(0);
 
@@ -86,7 +87,7 @@ int main(int argc, char *argv[]) {
 
     // Set up varibales for socket and fork
     pid_t spawnpid = -5;
-    int connectionSocket, charsRead, childStatus;
+    int connectionSocket, childStatus;
     struct sockaddr_in serverAddress, clientAddress;
     socklen_t sizeOfClientInfo = sizeof(clientAddress); 
     
@@ -138,22 +139,23 @@ int main(int argc, char *argv[]) {
             case 0: {
 
                 char buffer[1024];
-                char fullText[100000];
+                char fullText[1000000];
                 char parsedKey[100000];
                 char parsedText[100000];
                 char encryptedText[100000];
                 char *key;
                 char *text;
-                int fileLength, charsRead;
+                int fileLength, charsRead, fromEncryptionServer;
 
                 //Read number of chars to expect
                 read(connectionSocket, &fileLength, sizeof(int));
-            
+
                 // Read chars and set them in fullText
                 charsRead = 0;
                 while(charsRead <= fileLength) {
 
                     charsRead += recv(connectionSocket, buffer, 255, 0);
+                    printf("%s", buffer);
                     strcat(fullText, buffer);
                     memset(buffer, '\0', 1024);
 
@@ -171,6 +173,10 @@ int main(int argc, char *argv[]) {
                 // Call encrypt to put the encrypted text in encryptedText string
                 encrypt(parsedText, parsedKey, encryptedText);
 
+                // Send a 0 to client to prove that this is encryption not decryption
+                fromEncryptionServer = 0;
+                write(connectionSocket, &fromEncryptionServer, sizeof(int));
+
                 // Send encrypted text back to client
                 charsRead = 0;
                 while(charsRead < strlen(encryptedText)) {
@@ -179,6 +185,12 @@ int main(int argc, char *argv[]) {
                 if (charsRead < 0){
                     error("ERROR writing to socket");
                 }
+
+                memset(buffer, '\0', 1024);
+                memset(fullText, '\0', 100000);
+                memset(parsedKey, '\0', 100000);
+                memset(parsedText, '\0', 100000);
+                memset(encryptedText, '\0', 100000);
 
                 // Close the connection socket for this client
                 close(connectionSocket);
