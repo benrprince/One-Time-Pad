@@ -4,7 +4,7 @@
  *      Date: 05/31/2021
  * 
  *      Decryption Client File
- *      Source: https://www.youtube.com/watch?v=9g_nMNJhRVk&list=PLPyaR5G9aNDvs6TtdpLcVO43_jvxp4emI&index=8
+ *      Sources: https://www.youtube.com/watch?v=9g_nMNJhRVk&list=PLPyaR5G9aNDvs6TtdpLcVO43_jvxp4emI&index=8
  * ******************************************************************/
 
 #include <stdio.h>
@@ -32,6 +32,11 @@ void error(const char *msg) {
 
 // Set up the address struct
 void setupAddressStruct(struct sockaddr_in* address, int portNumber){
+/******************************************************************
+ *  param: sockaddr_in*, int
+ *  return: NA
+ *  description: Sets up the address and port number
+ * ***************************************************************/
 
     // Clear out the address struct
     memset((char*) address, '\0', sizeof(*address)); 
@@ -60,10 +65,9 @@ int main(int argc, char *argv[]) {
     int socketFD, portNumber, charsWritten, charsRead, fileLength, keyLength, server;
     struct sockaddr_in serverAddress;
     FILE *plainText;
-    FILE *key;   // was key
-    char buffer[256];   // change to 1024
-    int size = 256;
-    char sendText[100000];
+    FILE *key;
+    char buffer[1024];   // change to 1024
+    char sendText[1000000];
     char keyText[100000];
     char readText[100000];
 
@@ -92,7 +96,7 @@ int main(int argc, char *argv[]) {
 
     }
     
-    //Send text to server
+    // Open text and key files for processing
     plainText = fopen(argv[1], "r");
     if (plainText == NULL) {
 
@@ -107,8 +111,8 @@ int main(int argc, char *argv[]) {
 
     }
 
-    memset(buffer, '\0', sizeof(buffer));
-
+    // Set up the text to be sent in sendText string
+    // Get char by char from plaintext to also get fileLength
     char c;
     fileLength = 0;
     for(c = getc(plainText); c != EOF; c = getc(plainText)) {
@@ -117,9 +121,10 @@ int main(int argc, char *argv[]) {
         fileLength++;
 
     }
-    sendText[strcspn(sendText, "\n")] = '\0';
+    // Replace new line with @ to separate text and key
     sendText[strcspn(sendText, "\n")] = '@';
 
+    // Add key to sendText by char to keep track of length
     keyLength = 0;
     int tempLength = fileLength;
     while((c = getc(key)) != EOF) {
@@ -139,21 +144,22 @@ int main(int argc, char *argv[]) {
 
     }
 
+    // Remove new Line at the end and decrement length by one
     sendText[strcspn(sendText, "\n")] = '\0';
     keyLength--;
 
+    // Write fileLength to the socket for correct parsing
     write(socketFD, &fileLength, sizeof(int));
-    rewind(plainText);
-    rewind(key);
 
-    char ch;
+    // Write the text and key
     charsWritten = 0;
-    while(charsWritten <= fileLength) {  // Possibly change this
+    while(charsWritten <= fileLength) {
 
         charsWritten += write(socketFD, sendText, 1000);
 
     } 
 
+    // Close files
     fclose(plainText);
     fclose(key);
 
@@ -162,24 +168,23 @@ int main(int argc, char *argv[]) {
     memset(buffer, '\0', sizeof(buffer));
 
     // Check that we sent to correct server
+    // 1 for decryption server, 0 for encryption server
     read(socketFD, &server, sizeof(int));
-
     if(server != 1) {
 
         error("CLIENT Error: Sent to incorrect Server");
 
     }
 
-    // Read data from the socket, leaving \0 at end
+    // Read data from the socket until fileLength is reached
     charsRead = 0;
     while(charsRead < fileLength) {
 
-        charsRead += recv(socketFD, buffer, 10, 0);
+        charsRead += recv(socketFD, buffer, 100, 0);
         strcat(readText, buffer);
         memset(buffer, '\0', sizeof(buffer));
 
     }
-    
     if (charsRead < 0){
 
         error("CLIENT: ERROR reading from socket");

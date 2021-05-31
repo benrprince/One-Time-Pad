@@ -4,7 +4,7 @@
  *      Date: 05/31/2021
  * 
  *      Encryption Server File
- *      Source: https://www.youtube.com/watch?v=9g_nMNJhRVk&list=PLPyaR5G9aNDvs6TtdpLcVO43_jvxp4emI&index=8
+ *      Sources: https://www.youtube.com/watch?v=9g_nMNJhRVk&list=PLPyaR5G9aNDvs6TtdpLcVO43_jvxp4emI&index=8
  * ******************************************************************/
 
 #include <stdio.h>
@@ -155,7 +155,6 @@ int main(int argc, char *argv[]) {
                 while(charsRead <= fileLength) {
 
                     charsRead += recv(connectionSocket, buffer, 255, 0);
-                    printf("%s", buffer);
                     strcat(fullText, buffer);
                     memset(buffer, '\0', 1024);
 

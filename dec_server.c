@@ -4,7 +4,7 @@
  *      Date: 05/31/2021
  * 
  *      Decryption Server File
- *      Source: https://www.youtube.com/watch?v=9g_nMNJhRVk&list=PLPyaR5G9aNDvs6TtdpLcVO43_jvxp4emI&index=8
+ *      Sources: https://www.youtube.com/watch?v=9g_nMNJhRVk&list=PLPyaR5G9aNDvs6TtdpLcVO43_jvxp4emI&index=8
  * ******************************************************************/
 
 #include <stdio.h>
@@ -140,7 +140,7 @@ int main(int argc, char *argv[]) {
             case 0: {
 
                 char buffer[1024];
-                char fullText[100000];
+                char fullText[1000000];
                 char parsedKey[100000];
                 char parsedText[100000];
                 char decryptedText[100000];
